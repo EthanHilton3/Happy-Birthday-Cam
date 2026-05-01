@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BDAY_TERMINAL v1.0</title>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --green:   #00ff41;
+      --dimgreen: #00aa2a;
+      --red:     #ff4444;
+      --yellow:  #ffcc00;
+      --cyan:    #00ccff;
+      --magenta: #ff66ff;
+      --bg:      #000;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--green);
+      font-family: 'Courier New', Courier, monospace;
+      font-size: clamp(13px, 1.6vw, 16px);
+    }
+
+    /* ── scanline overlay ── */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,.06) 2px,
+        rgba(0,0,0,.06) 4px
+      );
+      z-index: 9999;
+    }
+
+    /* ── layout ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    #output {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 20px 8px;
+      scroll-behavior: smooth;
+    }
+
+    #output::-webkit-scrollbar { width: 6px; }
+    #output::-webkit-scrollbar-track { background: #111; }
+    #output::-webkit-scrollbar-thumb { background: var(--dimgreen); border-radius: 3px; }
+
+    .line {
+      min-height: 1.5em;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .line.err  { color: var(--red); }
+    .line.warn { color: var(--yellow); }
+    .line.info { color: var(--cyan); }
+    .line.ok   { color: var(--green); }
+    .line.bday { color: var(--magenta); }
+    .line.dim  { color: var(--dimgreen); }
+    .line.echo { color: #aaffaa; opacity: .85; }
+
+    /* ── input row ── */
+    #input-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-top: 1px solid var(--dimgreen);
+      flex-shrink: 0;
+    }
+
+    #prompt {
+      white-space: nowrap;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    #cmd {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--green);
+      font: inherit;
+      caret-color: var(--green);
+    }
+
+    /* blinking cursor when input is disabled */
+    #cursor-block {
+      display: inline-block;
+      width: .6em;
+      height: 1em;
+      background: var(--green);
+      vertical-align: text-bottom;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── responsive ── */
+    @media (max-width: 480px) {
+      #output { padding: 10px 12px 6px; }
+      #input-row { padding: 8px 12px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <div id="output" aria-live="polite" aria-label="Terminal output"></div>
+  <div id="input-row">
+    <span id="prompt">guest@bday-terminal:~$</span>
+    <input id="cmd" type="text" autocomplete="off" spellcheck="false"
+           aria-label="Terminal input" autofocus />
+    <span id="cursor-block" aria-hidden="true"></span>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   GAME STATE
+   ============================================================ */
+const S = {
+  challenge: 1,           // 1-3; 4 = all done
+  solved:    [false, false, false],
+  target:    randInt(1, 50),
+  attempts:  0,
+  busy:      false,       // blocks input while printing
+};
+
+const SECRET_WORD = 'FORCE';
+const ENCODED     = btoa(SECRET_WORD);   // "Rk9SQ0U="
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function randInt(lo, hi) { return Math.floor(Math.random() * (hi - lo + 1)) + lo; }
+
+const out    = document.getElementById('output');
+const cmdEl  = document.getElementById('cmd');
+const cursor = document.getElementById('cursor-block');
+
+/** Append a single line of text; cls = 'ok'|'err'|'warn'|'info'|'bday'|'dim'|'echo'|'' */
+function addLine(text, cls) {
+  const d = document.createElement('div');
+  d.className = 'line' + (cls ? ' ' + cls : '');
+  d.textContent = text;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
+}
+
+/**
+ * Print an array of lines, one every `gap` ms.
+ * Returns a Promise that resolves when all lines are printed.
+ */
+function printLines(lines, cls, gap) {
+  gap = gap === undefined ? 70 : gap;
+  return new Promise(resolve => {
+    let i = 0;
+    function step() {
+      if (i >= lines.length) { resolve(); return; }
+      addLine(lines[i++], cls);
+      setTimeout(step, gap);
+    }
+    step();
+  });
+}
+
+/** Echo what the user typed */
+function echoCmd(text) {
+  addLine(document.getElementById('prompt').textContent + ' ' + text, 'echo');
+}
+
+/* ============================================================
+   CHALLENGES
+   ============================================================ */
+async function showChallenge1() {
+  await printLines([
+    '',
+    '╔══════════════════════════════════════════════╗',
+    '║        CHALLENGE  1  —  DECODE  THIS         ║',
+    '╚══════════════════════════════════════════════╝',
+    '',
+    'Our deep-space scanners intercepted an encrypted',
+    'transmission. Decode this base64 string to reveal',
+    'the secret word:',
+    '',
+    '  >>> ' + ENCODED + ' <<<',
+    '',
+    'Usage:  decode <ANSWER>',
+    '',
+  ]);
+}
+
+async function showChallenge2() {
+  S.target   = randInt(1, 50);
+  S.attempts = 0;
+  await printLines([
+    '',
+    '╔══════════════════════════════════════════════╗',
+    '║      CHALLENGE  2  —  GUESS  THE  NUMBER     ║',
+    '╚══════════════════════════════════════════════╝',
+    '',
+    'The HAL 9000 has locked the next clue behind a',
+    'secret number between 1 and 50.',
+    'I will tell you if you should go higher or lower.',
+    '',
+    'Usage:  guess <NUMBER>',
+    '',
+  ]);
+}
+
+async function showChallenge3() {
+  await printLines([
+    '',
+    '╔══════════════════════════════════════════════╗',
+    '║    CHALLENGE  3  —  DISCOVER  THE  COMMAND   ║',
+    '╚══════════════════════════════════════════════╝',
+    '',
+    'You are close, young Padawan.',
+    'Somewhere in this terminal hides a secret command.',
+    'The Force will guide you...',
+    '',
+    '  Hint: Someone very wise once said,',
+    '  "Do. Or do not. There is no try."',
+    '  But sometimes... you must USE something.',
+    '',
+    '  (Try typing: ls  or  cat force.dat  for more clues)',
+    '',
+  ]);
+}
+
+async function showBirthday() {
+  document.getElementById('prompt').textContent = 'cam@bday-terminal:~$';
+  await printLines([
+    '',
+    '███████████████████████████████████████████████████████',
+    '██                                                   ██',
+    '██   🎂   ACCESS GRANTED — HAPPY BIRTHDAY, CAM!  🎂  ██',
+    '██                                                   ██',
+    '███████████████████████████████████████████████████████',
+    '',
+  ], 'bday', 80);
+
+  await printLines([
+    '         ____',
+    '        /\\  /\\',
+    '       /  \\/  \\',
+    '      | (•)(•) |    <- CREEPER',
+    '      |   __   |    "Aww man... Happy Birthday!"',
+    '       \\______/',
+    '     ___||  ||___',
+    '    |   ||  ||   |',
+    '',
+  ], 'bday', 60);
+
+  await printLines([
+    '⚔️   STAR WARS SAYS:',
+    '   "May the Force be with you, Cam."',
+    '   "May your cake be strong with the dark chocolate side."',
+    '   "The Jedi Order wishes you a day with zero Sith Lords."',
+    '',
+    '⛏️   MINECRAFT SAYS:',
+    '   "You are rarer than a naturally spawned diamond pickaxe."',
+    '   "May no Creeper ever blow out your birthday candles."',
+    '   "Your XP level is now: LEGEND."',
+    '',
+    '🎉  FUN FACTS ABOUT CAM:',
+    '   - Officially another year wiser (or at least older).',
+    '   - Still cooler than a snow golem.',
+    '   - Has survived more respawns than Steve.',
+    '   - Midi-chlorian count is off the charts.',
+    '   - Can craft a birthday cake without any recipe book.',
+    '',
+    '🚀  SYSTEM MESSAGE:',
+    '   PARTY.EXE has been launched successfully.',
+    '   Side effects may include: excessive fun,',
+    '   uncontrollable laughter, and possible cake overdose.',
+    '',
+    '   *** HAPPY BIRTHDAY! 🎉🎉🎉 ***',
+    '',
+    '   -- From: Someone who knows base64 (and loves you) --',
+    '',
+  ], 'bday', 80);
+}
+
+/* ============================================================
+   COMMAND ROUTER
+   ============================================================ */
+async function handle(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return;
+
+  const lower   = trimmed.toLowerCase();
+  const parts   = trimmed.split(/\s+/);
+  const verb    = parts[0].toLowerCase();
+  const args    = parts.slice(1);
+
+  // ── global commands ──────────────────────────────────────
+  if (verb === 'help') {
+    await printLines([
+      '',
+      'COMMANDS:',
+      '  help           — show this help',
+      '  clear          — clear the screen',
+      '  status         — show challenge progress',
+      '  hint           — get a hint for the current challenge',
+      '  decode <word>  — submit a decode answer  (Challenge 1)',
+      '  guess  <num>   — guess a number 1–50     (Challenge 2)',
+      '  ls             — list directory',
+      '  cat <file>     — read a file',
+      '  whoami         — who are you?',
+      '  date           — current date',
+      '  sudo           — nice try',
+      '',
+    ], 'info');
+    return;
+  }
+
+  if (verb === 'clear') { out.innerHTML = ''; return; }
+
+  if (verb === 'status') {
+    const ic = s => s ? '✅' : '❌';
+    await printLines([
+      '',
+      '  Challenge 1 — Decode:          ' + ic(S.solved[0]),
+      '  Challenge 2 — Guess the number:' + ic(S.solved[1]),
+      '  Challenge 3 — Secret command:  ' + ic(S.solved[2]),
+      '',
+    ], 'info', 40);
+    return;
+  }
+
+  if (verb === 'hint') { await giveHint(); return; }
+
+  // ── easter eggs ──────────────────────────────────────────
+  if (verb === 'sudo') {
+    addLine('Permission denied. This incident will be reported. (jk)', 'err');
+    return;
+  }
+
+  if (verb === 'whoami') {
+    addLine('You are the Chosen One. Obviously.', 'info');
+    return;
+  }
+
+  if (verb === 'date') {
+    addLine(new Date().toString(), 'info');
+    return;
+  }
+
+  if (verb === 'ls') {
+    await printLines([
+      'birthday.txt  cake.exe  confetti.sh  force.dat  secret.md  README',
+      "(Psst — try:  cat force.dat  or  cat secret.md)",
+    ], 'info', 30);
+    return;
+  }
+
+  if (verb === 'cat') {
+    const file = (args[0] || '').toLowerCase();
+    if (file === 'secret.md') {
+      addLine('"The secret is: you must USE something powerful..." — Yoda, probably', 'warn');
+    } else if (file === 'birthday.txt') {
+      addLine('HAPPY BIRTHDAY CAM! (solve all 3 challenges to see the full message)', 'warn');
+    } else if (file === 'force.dat') {
+      addLine('[CLASSIFIED] — Only the chosen one may USE this.', 'warn');
+    } else if (file === 'cake.exe') {
+      addLine('The cake is a lie. But Cam\'s birthday is not.', 'warn');
+    } else if (file === 'confetti.sh') {
+      addLine('#!/bin/bash\necho "🎉🎉🎉" | while read c; do echo $c; done', 'dim');
+    } else {
+      addLine('cat: ' + (args[0] || '(no file)') + ': No such file or directory', 'err');
+    }
+    return;
+  }
+
+  if (lower === 'matrix') {
+    addLine('There is no spoon. Also, try "use the force".', 'info');
+    return;
+  }
+
+  // ── Challenge 1: decode ───────────────────────────────────
+  if (verb === 'decode') {
+    if (S.solved[0]) {
+      addLine('Challenge 1 already complete! Keep going.', 'warn'); return;
+    }
+    if (!args.length) { addLine('Usage: decode <answer>', 'err'); return; }
+    if (args[0].toUpperCase() === SECRET_WORD) {
+      S.solved[0] = true;
+      await printLines([
+        '',
+        '✅  CORRECT! The Force is strong with this one.',
+        '    You have decoded the transmission!',
+        '',
+      ], 'ok', 60);
+      await showChallenge2();
+    } else {
+      addLine('❌  Incorrect. "' + args[0] + '" is not the right answer. Try again.', 'err');
+    }
+    return;
+  }
+
+  // ── Challenge 2: guess ────────────────────────────────────
+  if (verb === 'guess') {
+    if (!S.solved[0]) {
+      addLine('Complete Challenge 1 first!  (decode <answer>)', 'err'); return;
+    }
+    if (S.solved[1]) {
+      addLine('Challenge 2 already solved! Find the secret command.', 'warn'); return;
+    }
+    const n = parseInt(args[0], 10);
+    if (!args.length || isNaN(n) || n < 1 || n > 50) {
+      addLine('Please guess a whole number between 1 and 50.', 'err'); return;
+    }
+    S.attempts++;
+    if (n === S.target) {
+      S.solved[1] = true;
+      const quip = S.attempts <= 3 ? 'Impressive. Most impressive.' : 'You\'ll do better next time, Padawan.';
+      await printLines([
+        '',
+        '✅  CORRECT! The number was ' + S.target + '.',
+        '    Solved in ' + S.attempts + ' attempt' + (S.attempts !== 1 ? 's' : '') + '. ' + quip,
+        '',
+      ], 'ok', 60);
+      await showChallenge3();
+    } else if (n < S.target) {
+      addLine('⬆️   HIGHER!  (' + S.attempts + ' attempt' + (S.attempts !== 1 ? 's' : '') + ')', 'warn');
+    } else {
+      addLine('⬇️   LOWER!   (' + S.attempts + ' attempt' + (S.attempts !== 1 ? 's' : '') + ')', 'warn');
+    }
+    return;
+  }
+
+  // ── Challenge 3: secret command ───────────────────────────
+  if (lower === 'use the force') {
+    if (!S.solved[1]) {
+      addLine('Complete Challenge 2 first!  (guess <number>)', 'err'); return;
+    }
+    if (S.solved[2]) {
+      addLine('The Force is already with you. 🌟', 'ok'); return;
+    }
+    S.solved[2] = true;
+    await printLines([
+      '',
+      '✅  YOU USED THE FORCE!',
+      '    "I felt a great disturbance in the terminal..."',
+      '    ALL THREE CHALLENGES COMPLETE!',
+      '',
+    ], 'ok', 60);
+    await showBirthday();
+    return;
+  }
+
+  // ── unknown ───────────────────────────────────────────────
+  addLine('Command not found: "' + verb + '".  Type help for a command list.', 'err');
+}
+
+/* ============================================================
+   HINTS
+   ============================================================ */
+async function giveHint() {
+  if (!S.solved[0]) {
+    await printLines([
+      '',
+      'HINT — Challenge 1 (Decode):',
+      '  The encoded string is:  ' + ENCODED,
+      '  Decoding it gives a 5-letter English word.',
+      '  Usage: decode <ANSWER>   (case-insensitive)',
+      '',
+    ], 'info', 40);
+  } else if (!S.solved[1]) {
+    const half = S.target > 25 ? 'upper half (26–50)' : 'lower half (1–25)';
+    await printLines([
+      '',
+      'HINT — Challenge 2 (Guess):',
+      '  The number is in the ' + half + '.',
+      '  Usage: guess <NUMBER>',
+      '',
+    ], 'info', 40);
+  } else if (!S.solved[2]) {
+    await printLines([
+      '',
+      'HINT — Challenge 3 (Secret command):',
+      '  It is a three-word phrase.',
+      '  Very Jedi. Think about what you do with the Force...',
+      '  Type the whole phrase as the command, spaces and all.',
+      '',
+    ], 'info', 40);
+  } else {
+    addLine('All challenges solved! 🎉', 'ok');
+  }
+}
+
+/* ============================================================
+   INPUT HANDLING
+   ============================================================ */
+cmdEl.addEventListener('keydown', async e => {
+  if (e.key !== 'Enter' || S.busy) return;
+  const val = cmdEl.value;
+  cmdEl.value = '';
+  S.busy = true;
+  cursor.style.display = 'none';
+  cmdEl.disabled = true;
+
+  echoCmd(val);
+  await handle(val);
+
+  cmdEl.disabled = false;
+  cursor.style.display = '';
+  S.busy = false;
+  cmdEl.focus();
+});
+
+// Clicking anywhere refocuses the input
+document.addEventListener('click', () => { if (!S.busy) cmdEl.focus(); });
+
+/* ============================================================
+   BOOT SEQUENCE
+   ============================================================ */
+(async () => {
+  S.busy = true;
+  cmdEl.disabled = true;
+
+  await printLines([
+    'BDAY_TERMINAL v1.0  —  INITIALIZING...',
+    '',
+    '  Loading kernel modules .............. [  OK  ]',
+    '  Mounting /dev/confetti .............. [  OK  ]',
+    '  Connecting to party server .......... [  OK  ]',
+    '  Calibrating cake sensors ............ [  OK  ]',
+    '  Decrypting birthday message ......... [LOCKED]',
+    '  Detecting fun levels ................ [CRIT! ]',
+    '',
+  ], '', 110);
+
+  await new Promise(r => setTimeout(r, 200));
+
+  await printLines([
+    '████████████████████████████████████████████████████████',
+    '██                                                    ██',
+    '██        WELCOME TO THE BIRTHDAY MATRIX  v1.0        ██',
+    '██                                                    ██',
+    '████████████████████████████████████████████████████████',
+    '',
+    'Hello, intruder. You have been selected.',
+    'Solve all 3 CHALLENGES to unlock a birthday message for Cam.',
+    'No pressure — only the fate of the party depends on you.',
+    '',
+    'Type  help  for available commands.',
+    '',
+  ], '', 90);
+
+  await showChallenge1();
+
+  cmdEl.disabled = false;
+  S.busy = false;
+  cmdEl.focus();
+})();
+</script>
+</body>
+</html>
