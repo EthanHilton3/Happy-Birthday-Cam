@@ -139,7 +139,7 @@
 const S = {
   challenge: 1,           // 1-3; 4 = all done
   solved:    [false, false, false],
-  target:    66,
+  target:    66,           // Execute Order 66 — "Execute Order 66" (Darth Sidious, Star Wars)
   attempts:  0,
   busy:      false,       // blocks input while printing
 };
@@ -209,7 +209,7 @@ async function showChallenge1() {
 }
 
 async function showChallenge2() {
-  S.target   = 66;
+  S.target   = 66;         // Execute Order 66 — always 66
   S.attempts = 0;
   await printLines([
     '',
