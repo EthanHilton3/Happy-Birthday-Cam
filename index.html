@@ -441,6 +441,26 @@ async function handle(raw) {
         '    Solved in ' + S.attempts + ' attempt' + (S.attempts !== 1 ? 's' : '') + '. ' + quip,
         '',
       ], 'ok', 60);
+      await printLines([
+        '        .    .                      ',
+        '         \\  /                       ',
+        '     .-\'\'`  `\'\'-.                   ',
+        '    /  _      _  \\                  ',
+        '   | (o)    (o)  |                  ',
+        '    \\   .--.   /                    ',
+        '     `-./  \\.-\'                     ',
+        '    .--\'-...-\'--..                  ',
+        '   /    (    )    \\                 ',
+        '  / .--.-`  \'-.--. \\               ',
+        ' / /  /  \\  /  \\  \\ \\             ',
+        '|_/  /    \\/    \\  \\_|            ',
+        '    (      /\\      )               ',
+        '     \\    /  \\    /                ',
+        '      \'--\'    \'--\'                  ',
+        '',
+        '  ░▒▓█  E X E C U T E   O R D E R   6 6  █▓▒░',
+        '',
+      ], 'warn', 40);
       await showChallenge3();
     } else if (n < S.target) {
       addLine('⬆️   HIGHER!  (' + S.attempts + ' attempt' + (S.attempts !== 1 ? 's' : '') + ')', 'warn');
