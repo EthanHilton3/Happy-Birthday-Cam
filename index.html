@@ -139,7 +139,7 @@
 const S = {
   challenge: 1,           // 1-3; 4 = all done
   solved:    [false, false, false],
-  target:    randInt(1, 50),
+  target:    66,           // Execute Order 66 — "Execute Order 66" (Darth Sidious, Star Wars)
   attempts:  0,
   busy:      false,       // blocks input while printing
 };
@@ -209,7 +209,7 @@ async function showChallenge1() {
 }
 
 async function showChallenge2() {
-  S.target   = randInt(1, 50);
+  S.target   = 66;         // Execute Order 66 — always 66
   S.attempts = 0;
   await printLines([
     '',
@@ -218,7 +218,7 @@ async function showChallenge2() {
     '╚══════════════════════════════════════════════╝',
     '',
     'The HAL 9000 has locked the next clue behind a',
-    'secret number between 1 and 50.',
+    'secret number between 1 and 100.',
     'I will tell you if you should go higher or lower.',
     '',
     'Usage:  guess <NUMBER>',
@@ -322,9 +322,11 @@ async function handle(raw) {
       '  status         — show challenge progress',
       '  hint           — get a hint for the current challenge',
       '  decode <word>  — submit a decode answer  (Challenge 1)',
-      '  guess  <num>   — guess a number 1–50     (Challenge 2)',
+      '  guess  <num>   — guess a number 1–100    (Challenge 2)',
       '  ls             — list directory',
       '  cat <file>     — read a file',
+      '  ./cake.exe     — run the cake program',
+      '  ./confetti.sh  — launch confetti',
       '  whoami         — who are you?',
       '  date           — current date',
       '  sudo           — nice try',
@@ -367,8 +369,8 @@ async function handle(raw) {
 
   if (verb === 'ls') {
     await printLines([
-      'birthday.txt  cake.exe  confetti.sh  force.dat  secret.md  README',
-      "(Psst — try:  cat force.dat  or  cat secret.md)",
+      'birthday.txt  cake.exe*  confetti.sh*  force.dat  secret.md  README',
+      "(Psst — try:  ./cake.exe  or  ./confetti.sh  or  cat force.dat)",
     ], 'info', 30);
     return;
   }
@@ -426,8 +428,8 @@ async function handle(raw) {
       addLine('Challenge 2 already solved! Find the secret command.', 'warn'); return;
     }
     const n = parseInt(args[0], 10);
-    if (!args.length || isNaN(n) || n < 1 || n > 50) {
-      addLine('Please guess a whole number between 1 and 50.', 'err'); return;
+    if (!args.length || isNaN(n) || n < 1 || n > 100) {
+      addLine('Please guess a whole number between 1 and 100.', 'err'); return;
     }
     S.attempts++;
     if (n === S.target) {
@@ -468,6 +470,48 @@ async function handle(raw) {
     return;
   }
 
+  // ── executable files ──────────────────────────────────────
+  if (verb === './cake.exe') {
+    await printLines([
+      '',
+      'Running cake.exe...',
+      '',
+      '  🎂  CAKE.EXE v1.0  🎂',
+      '  ┌─────────────────────────────┐',
+      '  │  🕯️  🕯️  🕯️  🕯️  🕯️  🕯️  🕯️  🕯️   │',
+      '  │   ~~~~~~~~~~~~~~~~~~~    │',
+      '  │  H A P P Y  B D A Y !   │',
+      '  │   ~~~~~~~~~~~~~~~~~~~    │',
+      '  │   [===================]  │',
+      '  │   [  chocolate fudge ]  │',
+      '  │   [===================]  │',
+      '  └─────────────────────────────┘',
+      '',
+      'The cake is NOT a lie. Happy Birthday, Cam! 🎉',
+      '',
+    ], 'bday', 60);
+    return;
+  }
+
+  if (verb === './confetti.sh') {
+    await printLines([
+      '',
+      'bash: executing confetti.sh...',
+      '',
+      '🎊  🎉  🎊  🎉  🎊  🎉  🎊  🎉  🎊  🎉',
+      '  🎈        CONFETTI LAUNCHED!        🎈',
+      '🎉  🎊  🎉  🎊  🎉  🎊  🎉  🎊  🎉  🎊',
+      '',
+      '  ✨ * . * ✨ . * ✨ * . ✨ * . * ✨',
+      '  . 🎀 * . 🎀 . * 🎀 * . 🎀 . * 🎀 .',
+      '  ✨ * . * ✨ . * ✨ * . ✨ * . * ✨',
+      '',
+      'confetti.sh: exit 0',
+      '',
+    ], 'bday', 60);
+    return;
+  }
+
   // ── unknown ───────────────────────────────────────────────
   addLine('Command not found: "' + verb + '".  Type help for a command list.', 'err');
 }
@@ -486,12 +530,12 @@ async function giveHint() {
       '',
     ], 'info', 40);
   } else if (!S.solved[1]) {
-    const half = S.target > 25 ? 'upper half (26–50)' : 'lower half (1–25)';
+    const half = S.target > 50 ? 'upper half (51–100)' : 'lower half (1–50)';
     await printLines([
       '',
       'HINT — Challenge 2 (Guess):',
       '  The number is in the ' + half + '.',
-      '  Usage: guess <NUMBER>',
+      '  Usage: guess <NUMBER>  (between 1 and 100)',
       '',
     ], 'info', 40);
   } else if (!S.solved[2]) {
