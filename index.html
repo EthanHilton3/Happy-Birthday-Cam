@@ -259,18 +259,6 @@ async function showBirthday() {
   ], 'bday', 80);
 
   await printLines([
-    '         ____',
-    '        /\\  /\\',
-    '       /  \\/  \\',
-    '      | (•)(•) |    <- CREEPER',
-    '      |   __   |    "Aww man... Happy Birthday!"',
-    '       \\______/',
-    '     ___||  ||___',
-    '    |   ||  ||   |',
-    '',
-  ], 'bday', 60);
-
-  await printLines([
     '⚔️   STAR WARS SAYS:',
     '   "May the Force be with you, Cam."',
     '   "May your cake be strong with the dark chocolate side."',
@@ -380,9 +368,53 @@ async function handle(raw) {
     if (file === 'secret.md') {
       addLine('"The secret is: you must USE something powerful..." — Yoda, probably', 'warn');
     } else if (file === 'birthday.txt') {
-      addLine('HAPPY BIRTHDAY CAM! (solve all 3 challenges to see the full message)', 'warn');
+      if (S.solved[2]) {
+        await printLines([
+          '',
+          '🎉 ═══════════════════════════════════════════ 🎉',
+          '         HAPPY BIRTHDAY, CAM! 🎂',
+          '🎉 ═══════════════════════════════════════════ 🎉',
+          '',
+          '  Today marks another legendary year for the Chosen One.',
+          '  You have decoded transmissions, outsmarted HAL 9000,',
+          '  and channelled the Force itself — all before cake.',
+          '',
+          '  May every day ahead be filled with:',
+          '    ⚔️  Star Wars marathons',
+          '    ⛏️  Diamond pickaxes',
+          '    🎂  Chocolate fudge cake',
+          '    🌟  More XP than you can spend',
+          '',
+          '  The galaxy is lucky to have you in it.',
+          '  HAPPY BIRTHDAY! 🎉🎉🎉',
+          '',
+          '  — From: Someone who knows base64 (and loves you) —',
+          '',
+        ], 'bday', 60);
+      } else {
+        addLine('HAPPY BIRTHDAY CAM! (solve all 3 challenges to see the full message)', 'warn');
+      }
     } else if (file === 'force.dat') {
-      addLine('[CLASSIFIED] — Only the chosen one may USE this.', 'warn');
+      if (S.solved[2]) {
+        await printLines([
+          '',
+          '╔══════════════════════════════════════════════╗',
+          '║           force.dat  —  DECLASSIFIED         ║',
+          '╚══════════════════════════════════════════════╝',
+          '',
+          '  THE FORCE IS STRONG WITH THIS ONE.',
+          '',
+          '  Midi-chlorian count: OFF THE CHARTS',
+          '  Jedi rank:           LEGEND',
+          '  Birthday status:     ACTIVE 🎉',
+          '',
+          '  "May the Force be with you, Cam."',
+          '                           — The Jedi Council',
+          '',
+        ], 'ok', 60);
+      } else {
+        addLine('[CLASSIFIED] — Only the chosen one may USE this.', 'warn');
+      }
     } else if (file === 'cake.exe') {
       addLine('The cake is a lie. But Cam\'s birthday is not.', 'warn');
     } else if (file === 'confetti.sh') {
@@ -442,21 +474,6 @@ async function handle(raw) {
         '',
       ], 'ok', 60);
       await printLines([
-        '        .    .                      ',
-        '         \\  /                       ',
-        '     .-\'\'`  `\'\'-.                   ',
-        '    /  _      _  \\                  ',
-        '   | (o)    (o)  |                  ',
-        '    \\   .--.   /                    ',
-        '     `-./  \\.-\'                     ',
-        '    .--\'-...-\'--..                  ',
-        '   /    (    )    \\                 ',
-        '  / .--.-`  \'-.--. \\               ',
-        ' / /  /  \\  /  \\  \\ \\             ',
-        '|_/  /    \\/    \\  \\_|            ',
-        '    (      /\\      )               ',
-        '     \\    /  \\    /                ',
-        '      \'--\'    \'--\'                  ',
         '',
         '  ░▒▓█  E X E C U T E   O R D E R   6 6  █▓▒░',
         '',
@@ -498,13 +515,13 @@ async function handle(raw) {
       '',
       '  🎂  CAKE.EXE v1.0  🎂',
       '  ┌─────────────────────────────┐',
-      '  │  🕯️  🕯️  🕯️  🕯️  🕯️  🕯️  🕯️  🕯️   │',
-      '  │   ~~~~~~~~~~~~~~~~~~~    │',
-      '  │  H A P P Y  B D A Y !   │',
-      '  │   ~~~~~~~~~~~~~~~~~~~    │',
-      '  │   [===================]  │',
-      '  │   [  chocolate fudge ]  │',
-      '  │   [===================]  │',
+      '  │  🕯️  🕯️  🕯️  🕯️  🕯️  🕯️     │',
+      '  │   ~~~~~~~~~~~~~~~~~~~     │',
+      '  │   H A P P Y  B D A Y !    │',
+      '  │   ~~~~~~~~~~~~~~~~~~~     │',
+      '  │   [===================]   │',
+      '  │   [  chocolate fudge  ]   │',
+      '  │   [===================]   │',
       '  └─────────────────────────────┘',
       '',
       'The cake is NOT a lie. Happy Birthday, Cam! 🎉',
